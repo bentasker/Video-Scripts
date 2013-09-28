@@ -283,6 +283,7 @@
                   $array['id']  = $download['id'];
                   $array['url'] = $download['url'];
                   $info         = curl_getinfo($download['ch']);
+                  logPartDebug("Fragment {$download['id']} - URL {$download['url']} returned HTTP {$info['http_code']}");
                   if ($info['http_code'] == 0)
                     {
                       /* if curl fails due to network connectivity issues or some other reason it's *
@@ -347,7 +348,7 @@
 
   class F4F
     {
-      var $audio, $auth, $baseFilename, $baseTS, $bootstrapUrl, $baseUrl, $debug, $duration, $fileCount, $filesize, $fixWindow;
+      var $audio, $auth, $baseFilename, $baseTS, $bootstrapUrl, $baseUrl, $debug, $duration, $fileCount, $filesize, $fixWindow, $partialdebug;
       var $format, $live, $media, $metadata, $outDir, $outFile, $parallel, $play, $processed, $quality, $rename, $video;
       var $prevTagSize, $tagHeaderLen;
       var $segTable, $fragTable, $segNum, $fragNum, $frags, $fragCount, $lastFrag, $fragUrl, $discontinuity;
@@ -360,6 +361,7 @@
           $this->baseFilename  = "";
           $this->bootstrapUrl  = "";
           $this->debug         = false;
+          $this->partialdebug         = false;
           $this->duration      = 0;
           $this->fileCount     = 1;
           $this->fixWindow     = 1000;
@@ -1500,6 +1502,19 @@
           fwrite(STDERR, $msg . "\n");
     }
 
+  function logPartDebug($msg,$display = true)
+    {
+      global $partialdebug, $showHeader;
+      if ($showHeader)
+        {
+          ShowHeader();
+          $showHeader = false;
+        }
+      if ($display and $partialdebug)
+          fwrite(STDERR, $msg . "\n");
+
+    }
+
   function LogError($msg, $code = 1)
     {
       LogInfo($msg);
@@ -1713,7 +1728,8 @@
           'fproxy' => 'force proxy for downloading of fragments',
           'play' => 'dump stream to stdout for piping to media player',
           'rename' => 'rename fragments sequentially before processing',
-          'update' => 'update the script to current git version'
+          'update' => 'update the script to current git version',
+	  'test-manifest' => 'Output details from the manifest'
       ),
       1 => array(
           'auth' => 'authentication string for fragment requests',
@@ -1815,6 +1831,9 @@
       $start = $cli->getParam('start');
   if ($cli->getParam('useragent'))
       $cc->user_agent = $cli->getParam('useragent');
+  if ($cli->getParam('test-manifest'))
+      $partialdebug = true;
+
 
   // Use custom referrer
   if ($referrer)
@@ -1913,7 +1932,7 @@
       $count++;
     }
   LogInfo("Found $fragCount fragments");
-
+  logPartDebug("Found $fragCount fragments");
   if (!$f4f->processed)
     {
       // Process available fragments
